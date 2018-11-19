@@ -16,6 +16,10 @@ def get_batch_size():
     return 10
 
 
+def kernel_init(name, shape, initializer):
+    return tf.Variable(name, shape, initializer=initializer, dtype=tf.float32)
+
+
 def cnn(features, labels, mode):
     """Returns an EstimatorSpec that is constructed using a CNN that you have to write below."""
 
@@ -30,23 +34,25 @@ def cnn(features, labels, mode):
     # Padding is added to preserve width and height.
     # Input Tensor Shape: [batch_size, 64, 64, 3]
     # Output Tensor Shape: [batch_size, 64, 64, 32]
-    conv1 = tf.layers.conv2d(
+    conv1 = tf.conv2d(
         inputs=input_layer,
-        filters=32,
-        kernel_size=[5, 5],
-        padding="same",
-        activation=tf.nn.relu)
+        filter=[5, 5, 3, 64],
+        strides= [1, 1, 1, 1],
+        padding='SAME')
+
+    pre_activation = tf.nn.bias_add(conv1, biases)
+    conv1 = tf.nn.relu(pre_activation)
 
     # Pooling Layer #1
     # First max pooling layer with a 2x2 filter and stride of 2
-    # Input Tensor Shape: [batch_size, 64, 64, 32]
-    # Output Tensor Shape: [batch_size, 32, 32, 32]
+    # Input Tensor Shape: [batch_size, 64, 64, 64]
+    # Output Tensor Shape: [batch_size, 32, 32, 64]
     pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
 
     # Convolutional Layer #2
     # Computes 64 features using a 5x5 filter.
     # Padding is added to preserve width and height.
-    # Input Tensor Shape: [batch_size, 32, 32, 32]
+    # Input Tensor Shape: [batch_size, 32, 32, 64]
     # Output Tensor Shape: [batch_size, 32, 32, 64]
     conv2 = tf.layers.conv2d(
         inputs=pool1,
