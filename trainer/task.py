@@ -12,6 +12,7 @@ import trainer.model as model
 
 
 def train_model(params):
+
     """The function gets the training data from the training folder,
     the evaluation data from the test folder and trains the CNN from the model.py file with it."""
     (train_data, train_labels) = data.create_data_with_labels("data/train/")
