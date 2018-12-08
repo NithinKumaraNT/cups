@@ -46,10 +46,11 @@ def cnn(features, labels, mode):
     # Input Layer (a batch of images that have 64x64 pixels and are RGB colored (3)
     input_layer = tf.reshape(features["x"], [-1, 64, 64, 3])
 
-#    if mode == tf.estimator.ModeKeys.TRAIN:
-#        input_layer = augment_input_layer(input_layer)
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        input_layer = _augment_input_layer(input_layer)
 
     with tf.variable_scope('conv1') as scope:
+
         kernel = _variable_with_weight_decay(
             'weights',
             shape=[5, 5, 3, 64],
@@ -67,21 +68,21 @@ def cnn(features, labels, mode):
         pre_activation = tf.nn.bias_add(conv, biases)
         conv1 = tf.nn.relu(pre_activation, name=scope.name)
 
-    pool1 = tf.nn.max_pool(
-        conv1,
-        ksize=[1, 3, 3, 1],
-        strides=[1, 2, 2, 1],
-        padding='SAME',
-        name='pool1')
+        pool1 = tf.nn.max_pool(
+            conv1,
+            ksize=[1, 3, 3, 1],
+            strides=[1, 2, 2, 1],
+            padding='SAME',
+            name='pool1')
 
-    # norm1
-    norm1 = tf.nn.lrn(
-        pool1,
-        4,
-        bias=1.0,
-        alpha=0.001 / 9.0,
-        beta=0.75,
-        name='norm1')
+        # norm1
+        norm1 = tf.nn.lrn(
+            pool1,
+            4,
+            bias=1.0,
+            alpha=0.001 / 9.0,
+            beta=0.75,
+            name='norm1')
 
     # conv2
     with tf.variable_scope('conv2') as scope:
@@ -91,47 +92,103 @@ def cnn(features, labels, mode):
             stddev=5e-2,
             wd=None)
 
-        conv = tf.nn.conv2d(norm1, kernel, [1, 1, 1, 1], padding='SAME')
-        biases = tf.get_variable('biases', [64], initializer=tf.constant_initializer(0.1))
-        pre_activation = tf.nn.bias_add(conv, biases)
-        conv2 = tf.nn.relu(pre_activation, name=scope.name)
+        conv = tf.nn.conv2d(
+            norm1,
+            kernel,
+            [1, 1, 1, 1],
+            padding='SAME')
 
-    # norm2
-    norm2 = tf.nn.lrn(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
-                      name='norm2')
-    # pool2
-    pool2 = tf.nn.max_pool(norm2, ksize=[1, 3, 3, 1],
-                           strides=[1, 2, 2, 1], padding='SAME', name='pool2')
+        biases = tf.get_variable(
+            'biases',
+            [64],
+            initializer=tf.constant_initializer(0.1))
+
+        pre_activation = tf.nn.bias_add(
+            conv,
+            biases)
+
+        conv2 = tf.nn.relu(
+            pre_activation,
+            name=scope.name)
+
+        # norm2
+        norm2 = tf.nn.lrn(
+            conv2,
+            4,
+            bias=1.0,
+            alpha=0.001 / 9.0,
+            beta=0.75,
+            name='norm2')
+
+        # pool2
+        pool2 = tf.nn.max_pool(
+            norm2,
+            ksize=[1, 3, 3, 1],
+            strides=[1, 2, 2, 1],
+            padding='SAME',
+            name='pool2')
 
     # local3
     with tf.variable_scope('local3') as scope:
         # Move everything into depth so we can perform a single matrix multiply.
         dim = reduce(lambda x, y: x*y, pool2.get_shape().as_list()[1:])
+
         reshape = tf.reshape(pool2, [-1, dim])
-        weights = _variable_with_weight_decay('weights', shape=[dim, 384],
-                                              stddev=0.04, wd=0.004)
-        biases = tf.get_variable('biases', [384], initializer=tf.constant_initializer(0.1))
-        local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
+
+        weights = _variable_with_weight_decay(
+            'weights',
+            shape=[dim, 384],
+            stddev=0.04,
+            wd=0.004)
+
+        biases = tf.get_variable(
+            'biases',
+            [384],
+            initializer=tf.constant_initializer(0.1))
+
+        local3 = tf.nn.relu(
+            tf.matmul(reshape, weights) + biases,
+            name=scope.name)
 
     # local4
     with tf.variable_scope('local4') as scope:
-        weights = _variable_with_weight_decay('weights', shape=[384, 192],
-                                              stddev=0.04, wd=0.004)
-        biases = tf.get_variable('biases', [192], initializer=tf.constant_initializer(0.1))
-        local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name=scope.name)
+        weights = _variable_with_weight_decay(
+            'weights',
+            shape=[384, 192],
+            stddev=0.04,
+            wd=0.004)
+
+        biases = tf.get_variable(
+            'biases',
+            [192],
+            initializer=tf.constant_initializer(0.1))
+
+        local4 = tf.nn.relu(
+            tf.matmul(local3, weights) + biases,
+            name=scope.name)
 
     with tf.variable_scope('softmax_linear') as scope:
-        weights = _variable_with_weight_decay('weights', [192, NUM_CLASSES],
-                                              stddev=1 / 192.0, wd=None)
+        weights = _variable_with_weight_decay(
+            'weights',
+            [192, NUM_CLASSES],
+            stddev=1 / 192.0, wd=None)
+
         biases = tf.get_variable(
             'biases',
             [NUM_CLASSES],
             initializer=tf.constant_initializer(0.0))
+
         logits = tf.add(tf.matmul(local4, weights), biases, name=scope.name)
 
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-        labels=labels, logits=logits, name='cross_entropy_per_example')
-    cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+        labels=labels,
+        logits=logits,
+        name='cross_entropy_per_example')
+
+    cross_entropy_mean = tf.reduce_mean(
+        cross_entropy,
+        name='cross_entropy')
+
     tf.add_to_collection('losses', cross_entropy_mean)
 
     # The total loss is defined as the cross entropy loss plus all of the weight
@@ -151,11 +208,12 @@ def cnn(features, labels, mode):
     decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
 
     # Decay the learning rate exponentially based on the number of steps.
-    lr = tf.train.exponential_decay(INITIAL_LEARNING_RATE,
-                                    tf.train.get_global_step(),
-                                    decay_steps,
-                                    LEARNING_RATE_DECAY_FACTOR,
-                                    staircase=True)
+    lr = tf.train.exponential_decay(
+        INITIAL_LEARNING_RATE,
+        tf.train.get_global_step(),
+        decay_steps,
+        LEARNING_RATE_DECAY_FACTOR,
+        staircase=True)
 
     # Compute the moving average of all individual losses and the total loss.
     loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
@@ -168,11 +226,14 @@ def cnn(features, labels, mode):
         grads = opt.compute_gradients(total_loss)
 
     # Apply gradients.
-    apply_gradient_op = opt.apply_gradients(grads, global_step=tf.train.get_global_step())
+    apply_gradient_op = opt.apply_gradients(
+        grads,
+        global_step=tf.train.get_global_step())
 
     # Track the moving averages of all trainable variables.
     variable_averages = tf.train.ExponentialMovingAverage(
-        MOVING_AVERAGE_DECAY, tf.train.get_global_step())
+        MOVING_AVERAGE_DECAY,
+        tf.train.get_global_step())
 
     with tf.control_dependencies([apply_gradient_op]):
         train_op = variable_averages.apply(tf.trainable_variables())
@@ -212,28 +273,11 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
     return var
 
 
-# def _augment_input_layer(input_layer):
-#     # Image processing for training the network. Note the many random
-#     # distortions applied to the image.
-#
-#     # Randomly crop a [height, width] section of the image.
-#     distorted_image = tf.random_crop(input_layer, [height, width, 3])
-#
-#     # Randomly flip the image horizontally.
-#     distorted_image = tf.image.random_flip_left_right(distorted_image)
-#
-#     # Because these operations are not commutative, consider randomizing
-#     # the order their operation.
-#     # NOTE: since per_image_standardization zeros the mean and makes
-#     # the stddev unit, this likely has no effect see tensorflow#1458.
-#     distorted_image = tf.image.random_brightness(distorted_image,
-#                                                  max_delta=63)
-#     distorted_image = tf.image.random_contrast(distorted_image,
-#                                                lower=0.2, upper=1.8)
-#
-#     # Subtract off the mean and divide by the variance of the pixels.
-#     float_image = tf.image.per_image_standardization(distorted_image)
-#
-#     # Set the shapes of tensors.
-#     float_image.set_shape([height, width, 3])
-#     read_input.label.set_shape([1])
+def _augment_input_layer(input_layer):
+     # Image processing for training the network. Note the many random
+     # distortions applied to the image.
+     import pdb; pdb.set_trace()
+     # Randomly flip the image horizontally.
+     distorted_image = tf.image.random_flip_left_right(input_layer)
+
+     return distorted_image
