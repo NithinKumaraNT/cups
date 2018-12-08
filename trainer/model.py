@@ -4,25 +4,16 @@
 import tensorflow as tf
 
 # Constants describing the training process.
-MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
-NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
+MOVING_AVERAGE_DECAY = 0.9999  # The decay to use for the moving average.
+NUM_EPOCHS_PER_DECAY = 350.0  # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
-INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
+INITIAL_LEARNING_RATE = 0.1  # Initial learning rate.
 
 IMAGE_SIZE = 64
 NUM_CLASSES = 4
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 500
 BATCH_SIZE = 50
 NUM_TRAINING_STEPS = 20000
-
-
-FLAGS = tf.app.flags.FLAGS
-
-# Basic model parameters.
-tf.app.flags.DEFINE_integer('batch_size', BATCH_SIZE,
-                            """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_string('data_dir', '/tmp/cifar10_data',
-                           """Path to the CIFAR-10 data directory.""")
 
 
 def get_training_steps():
@@ -131,7 +122,7 @@ def cnn(features, labels, mode):
     # local3
     with tf.variable_scope('local3') as scope:
         # Move everything into depth so we can perform a single matrix multiply.
-        dim = reduce(lambda x, y: x*y, pool2.get_shape().as_list()[1:])
+        dim = reduce(lambda x, y: x * y, pool2.get_shape().as_list()[1:])
 
         reshape = tf.reshape(pool2, [-1, dim])
 
@@ -204,7 +195,7 @@ def cnn(features, labels, mode):
     }
 
     # Variables that affect learning rate.
-    num_batches_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / FLAGS.batch_size
+    num_batches_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / get_batch_size()
     decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
 
     # Decay the learning rate exponentially based on the number of steps.
@@ -274,10 +265,11 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
 
 
 def _augment_input_layer(input_layer):
-     # Image processing for training the network. Note the many random
-     # distortions applied to the image.
-     import pdb; pdb.set_trace()
-     # Randomly flip the image horizontally.
-     distorted_image = tf.image.random_flip_left_right(input_layer)
+    distorted_image = tf.image.random_flip_left_right(input_layer)
+    distorted_image = tf.image.random_flip_up_down(distorted_image)
 
-     return distorted_image
+    return distorted_image
+
+
+def _clean_input_layer(input_layer):
+    return input_layer
