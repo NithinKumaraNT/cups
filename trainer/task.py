@@ -44,7 +44,7 @@ if __name__ == "__main__":
     PARSER = argparse.ArgumentParser()
     PARSER.add_argument(
         '--eval-steps',
-        help='Number of steps to run evalution for at each checkpoint',
+        help='Number of steps to run evaluation for at each checkpoint',
         default=1,
         type=int
     )
