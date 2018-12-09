@@ -8,7 +8,7 @@ import tensorflow as tf
 from tensorflow.contrib.training.python.training import hparam
 
 import trainer.data as data
-import trainer.model as model
+import trainer.model_alex as model
 
 
 def train_model(params):
