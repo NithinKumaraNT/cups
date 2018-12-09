@@ -8,7 +8,7 @@ import tensorflow as tf
 from tensorflow.contrib.training.python.training import hparam
 
 import trainer.data as data
-import trainer.model as model
+import trainer.model_alex as model
 
 
 def train_model(params):
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     PARSER = argparse.ArgumentParser()
     PARSER.add_argument(
         '--eval-steps',
-        help='Number of steps to run evalution for at each checkpoint',
+        help='Number of steps to run evaluation for at each checkpoint',
         default=1,
         type=int
     )
