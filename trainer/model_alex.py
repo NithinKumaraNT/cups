@@ -12,7 +12,7 @@ INITIAL_LEARNING_RATE = 0.1  # Initial learning rate.
 IMAGE_SIZE = 64
 NUM_CLASSES = 4
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 500
-BATCH_SIZE = 50
+BATCH_SIZE = 20
 NUM_TRAINING_STEPS = 20000
 
 
@@ -40,6 +40,7 @@ def cnn(features, labels, mode):
     if mode == tf.estimator.ModeKeys.TRAIN:
         input_layer = _augment_input_layer(input_layer)
 
+    # convolution 1
     with tf.variable_scope('conv1') as scope:
 
         kernel = _variable_with_weight_decay(
@@ -75,7 +76,7 @@ def cnn(features, labels, mode):
             beta=0.75,
             name='norm1')
 
-    # conv2
+    # convolution 2
     with tf.variable_scope('conv2') as scope:
         kernel = _variable_with_weight_decay(
             'weights',
@@ -137,8 +138,15 @@ def cnn(features, labels, mode):
             [384],
             initializer=tf.constant_initializer(0.1))
 
-        local3 = tf.nn.relu(
+        relu = tf.nn.relu(
             tf.matmul(reshape, weights) + biases,
+            name="relu")
+
+        # Add dropout operation; 0.6 probability that element will be kept
+        local3 = tf.layers.dropout(
+            inputs=relu,
+            rate=0.4,
+            training=mode == tf.estimator.ModeKeys.TRAIN,
             name=scope.name)
 
     # local4
@@ -154,8 +162,15 @@ def cnn(features, labels, mode):
             [192],
             initializer=tf.constant_initializer(0.1))
 
-        local4 = tf.nn.relu(
+        relu = tf.nn.relu(
             tf.matmul(local3, weights) + biases,
+            name="relu")
+
+        # Add dropout operation; 0.6 probability that element will be kept
+        local4 = tf.layers.dropout(
+            inputs=relu,
+            rate=0.4,
+            training=mode == tf.estimator.ModeKeys.TRAIN,
             name=scope.name)
 
     with tf.variable_scope('softmax_linear') as scope:
