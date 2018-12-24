@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 """This file trains the model upon the training data and evaluates it with the test data.
 It uses the arguments it got via the gcloud command."""
-
+import matplotlib.pyplot as plt
 import argparse
 import os
 import tensorflow as tf
 from tensorflow.contrib.training.python.training import hparam
 
 import trainer.data as data
-import trainer.model_alex as model
+import trainer.model_adams as model
 
 
 def train_model(params):
@@ -36,9 +36,23 @@ def train_model(params):
 
     steps_per_eval = int(model.get_training_steps() / params.eval_steps)
 
+    res = []
+
     for _ in range(params.eval_steps):
         estimator.train(train_input_fn, steps=steps_per_eval)
-        estimator.evaluate(eval_input_fn)
+        res.append(estimator.evaluate(eval_input_fn))
+
+    f1 = plt.figure(1)
+    plt.plot(list(item["loss"] for item in res))
+    plt.ylabel('loss')
+    f1.show()
+
+    f2 = plt.figure(2)
+    plt.plot(list(item["accuracy"] for item in res))
+    plt.ylabel('accuracy')
+    f2.show()
+
+    raw_input('Press enter to continue: ')
 
 
 if __name__ == "__main__":
