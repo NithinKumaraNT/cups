@@ -3,6 +3,10 @@
 
 import tensorflow as tf
 
+CROP_MARGIN = 0
+ORIGINAL_IMAGE_SIZE = 64
+IMAGE_SIZE = ORIGINAL_IMAGE_SIZE-CROP_MARGIN
+
 
 def get_training_steps():
     """Returns the number of steps that will be used to train the CNN.
@@ -13,7 +17,7 @@ def get_training_steps():
 def get_batch_size():
     """Returns the batch size that will be used by the CNN.
     It is recommended to change this value."""
-    return 10
+    return 20
 
 
 def cnn(features, labels, mode):
@@ -27,6 +31,8 @@ def cnn(features, labels, mode):
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         input_layer = _augment_input_layer(input_layer)
+    else:
+        input_layer = _clean_input_layer(input_layer)
 
     # Convolution Layer #1
     # Computes 32 features using a 5x5 filter with ReLU activation.
@@ -67,7 +73,8 @@ def cnn(features, labels, mode):
     # Flatten tensor into a batch of vectors
     # Input Tensor Shape: [batch_size, 16, 16, 64]
     # Output Tensor Shape: [batch_size, 16 * 16 * 64]
-    pool2_flat = tf.reshape(pool2, [-1, 16 * 16 * 64])
+    dim = reduce(lambda x, y: x * y, pool2.get_shape().as_list()[1:])
+    pool2_flat = tf.reshape(pool2, [-1, dim])
 
     # Dense Layer
     # Densely connected layer with 1024 neurons
@@ -136,11 +143,23 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
 
 
 def _augment_input_layer(input_layer):
+    dim = input_layer.get_shape().as_list()[0]
+
     distorted_image = tf.image.random_flip_left_right(input_layer)
     distorted_image = tf.image.random_flip_up_down(distorted_image)
+
+    distorted_image = tf.image.random_crop(
+        value=distorted_image,
+        size=[dim, IMAGE_SIZE, IMAGE_SIZE, 3])
 
     return distorted_image
 
 
 def _clean_input_layer(input_layer):
-    return input_layer
+
+    return tf.image.crop_to_bounding_box(
+        image=input_layer,
+        offset_height=CROP_MARGIN/2,
+        offset_width=CROP_MARGIN/2,
+        target_height=IMAGE_SIZE,
+        target_width=IMAGE_SIZE)
