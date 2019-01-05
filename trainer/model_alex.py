@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """This file contains all the model information: the training steps, the batch size and the model iself."""
-
+import math
 import tensorflow as tf
 
 # Constants describing the training process.
@@ -9,11 +9,14 @@ NUM_EPOCHS_PER_DECAY = 350.0  # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
 INITIAL_LEARNING_RATE = 0.1  # Initial learning rate.
 
-IMAGE_SIZE = 64
 NUM_CLASSES = 4
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 500
 BATCH_SIZE = 20
-NUM_TRAINING_STEPS = 20000
+NUM_TRAINING_STEPS = 40000
+
+CROP_MARGIN = 4
+ORIGINAL_IMAGE_SIZE = 64
+IMAGE_SIZE = ORIGINAL_IMAGE_SIZE-CROP_MARGIN
 
 
 def get_training_steps():
@@ -35,10 +38,12 @@ def cnn(features, labels, mode):
     labels = tf.cast(labels, tf.int64)
 
     # Input Layer (a batch of images that have 64x64 pixels and are RGB colored (3)
-    input_layer = tf.reshape(features["x"], [-1, 64, 64, 3])
+    input_layer = tf.reshape(features["x"], [-1, ORIGINAL_IMAGE_SIZE, ORIGINAL_IMAGE_SIZE, 3])
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         input_layer = _augment_input_layer(input_layer)
+    else:
+        input_layer = _clean_input_layer(input_layer)
 
     # convolution 1
     with tf.variable_scope('conv1') as scope:
@@ -280,11 +285,23 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
 
 
 def _augment_input_layer(input_layer):
+    dim = input_layer.get_shape().as_list()[0]
+
     distorted_image = tf.image.random_flip_left_right(input_layer)
     distorted_image = tf.image.random_flip_up_down(distorted_image)
+
+    distorted_image = tf.image.random_crop(
+        value=distorted_image,
+        size=[dim, IMAGE_SIZE, IMAGE_SIZE, 3])
 
     return distorted_image
 
 
 def _clean_input_layer(input_layer):
-    return input_layer
+
+    return tf.image.crop_to_bounding_box(
+        image=input_layer,
+        offset_height=CROP_MARGIN/2,
+        offset_width=CROP_MARGIN/2,
+        target_height=IMAGE_SIZE,
+        target_width=IMAGE_SIZE)
